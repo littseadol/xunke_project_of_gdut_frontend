@@ -1,6 +1,6 @@
 import request from '@/utils/request'
 
-// 查询班级课信息列表
+// 查询排课信息列表
 export function listClassSchedule(query) {
   return request({
     url: '/lab/classSchedule/list',
@@ -9,7 +9,7 @@ export function listClassSchedule(query) {
   })
 }
 
-// 查询班级课信息详细
+// 查询排课信息详细
 export function getClassSchedule(scheduleId) {
   return request({
     url: '/lab/classSchedule/' + scheduleId,
@@ -17,7 +17,7 @@ export function getClassSchedule(scheduleId) {
   })
 }
 
-// 新增班级课信息
+// 新增排课信息
 export function addClassSchedule(data) {
   return request({
     url: '/lab/classSchedule',
@@ -26,7 +26,7 @@ export function addClassSchedule(data) {
   })
 }
 
-// 修改班级课信息
+// 修改排课信息
 export function updateClassSchedule(data) {
   return request({
     url: '/lab/classSchedule',
@@ -35,7 +35,7 @@ export function updateClassSchedule(data) {
   })
 }
 
-// 删除班级课信息
+// 删除排课信息
 export function delClassSchedule(scheduleId) {
   return request({
     url: '/lab/classSchedule/' + scheduleId,
