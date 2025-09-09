@@ -1,466 +1,300 @@
 <template>
-  <div style="margin: 20px;">
-    <el-card>
+  <div class="knowledge-container">
+    <el-card class="full-screen-card">
       <template #header>
         <div class="card-header">
-          <span>知识提取</span>
-          <el-tag type="info" style="margin-left: 10px;">从文本中提取结构化知识</el-tag>
+          <span class="card-title">知识点提取</span>
+          <el-tag type="info" class="card-subtitle">从讲课内容中提取关键知识点</el-tag>
         </div>
       </template>
 
       <!-- 文本输入区域 -->
-      <div class="input-area">
-        <el-form>
-          <el-form-item label="输入文本">
-            <el-input
-              v-model="inputText"
-              type="textarea"
-              :rows="8"
-              placeholder="请输入要提取知识的文本内容"
-              show-word-limit
-              maxlength="5000"
-            />
-          </el-form-item>
-          
-          <el-form-item label="上传文本文件">
-            <el-upload
-              action=""
-              :auto-upload="false"
-              :show-file-list="false"
-              :on-change="handleFileUpload"
-              accept=".txt,.pdf,.docx"
-            >
-              <el-button type="primary">
-                <el-icon><upload /></el-icon>
-                选择文件
-              </el-button>
-              <span style="margin-left: 10px; color: #999;">支持.txt, .pdf, .docx格式</span>
-            </el-upload>
-          </el-form-item>
-        </el-form>
+      <div class="input-section">
+        <el-form-item label="讲课内容">
+          <el-input
+            v-model="inputText"
+            type="textarea"
+            :rows="10"
+            placeholder="请输入教师讲课的文本内容..."
+            resize="none"
+            class="input-textarea"
+            show-word-limit
+            maxlength="10000"
+          />
+        </el-form-item>
       </div>
 
-      <!-- 操作按钮区域 -->
-      <div class="action-area">
+      <!-- 操作按钮 -->
+      <div class="action-section">
         <el-button 
           type="primary" 
           :loading="isExtracting" 
           :disabled="!inputText" 
           @click="startExtraction"
           size="large"
+          class="action-btn"
         >
           <el-icon><magic-stick /></el-icon>
-          {{ isExtracting ? '提取中...' : '开始提取' }}
+          提取知识点
         </el-button>
 
         <el-button 
-          v-if="extractionResult" 
-          @click="clearAll" 
+          @click="insertSampleText" 
           size="large"
+          class="action-btn"
         >
-          <el-icon><refresh /></el-icon>
-          清空重试
+          <el-icon><document /></el-icon>
+          插入示例文本
         </el-button>
       </div>
 
-      <!-- 参数配置对话框 -->
-      <el-dialog 
-        v-model="paramDialogVisible" 
-        title="提取参数配置" 
-        width="600px" 
-        :before-close="handleParamDialogClose"
-      >
-        <el-form :model="extractParams" label-width="120px">
-          <el-form-item label="提取类型">
-            <el-checkbox-group v-model="extractParams.types">
-              <el-checkbox-button label="entities">实体</el-checkbox-button>
-              <el-checkbox-button label="relations">关系</el-checkbox-button>
-              <el-checkbox-button label="events">事件</el-checkbox-button>
-              <el-checkbox-button label="concepts">概念</el-checkbox-button>
-            </el-checkbox-group>
-          </el-form-item>
-
-          <el-form-item label="语言">
-            <el-select v-model="extractParams.language" placeholder="请选择语言" style="width: 100%">
-              <el-option label="自动检测" value="auto" />
-              <el-option label="中文" value="zh" />
-              <el-option label="英文" value="en" />
-            </el-select>
-          </el-form-item>
-
-          <el-form-item label="输出格式">
-            <el-select v-model="extractParams.format" placeholder="请选择输出格式" style="width: 100%">
-              <el-option label="结构化JSON" value="json" />
-              <el-option label="表格形式" value="table" />
-              <el-option label="知识图谱" value="graph" />
-            </el-select>
-          </el-form-item>
-
-          <el-form-item label="高级选项">
-            <el-switch v-model="extractParams.advanced" active-text="启用" inactive-text="禁用" />
-          </el-form-item>
-
-          <el-form-item v-if="extractParams.advanced" label="领域模型">
-            <el-select v-model="extractParams.domain" placeholder="请选择领域" style="width: 100%">
-              <el-option label="通用" value="general" />
-              <el-option label="医疗" value="medical" />
-              <el-option label="金融" value="financial" />
-              <el-option label="法律" value="legal" />
-              <el-option label="科技" value="technology" />
-            </el-select>
-          </el-form-item>
-        </el-form>
-
-        <template #footer>
-          <el-button @click="paramDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="confirmExtraction">开始提取</el-button>
-        </template>
-      </el-dialog>
-
-      <!-- 结果展示区域 -->
-      <el-row style="margin-top: 20px;" :gutter="20">
-        <el-col :span="24">
-          <el-card class="result-card">
-            <template #header>
-              <div class="card-header">
-                <span>提取结果</span>
-                <el-tag v-if="extractionResult" type="success">
-                  共 {{ extractedItemsCount }} 项知识
-                </el-tag>
-              </div>
-            </template>
-
-            <div v-if="extractionResult" class="result-content">
-              <!-- 根据选择的格式展示不同结果 -->
-              <div v-if="extractParams.format === 'json'">
-                <el-input
-                  v-model="formattedResult"
-                  type="textarea"
-                  :rows="10"
-                  readonly
-                  resize="none"
-                  class="result-text"
-                />
-              </div>
-
-              <div v-if="extractParams.format === 'table'">
-                <el-table :data="tableData" border style="width: 100%">
-                  <el-table-column prop="type" label="类型" width="120" />
-                  <el-table-column prop="content" label="内容" />
-                  <el-table-column prop="confidence" label="置信度" width="100">
-                    <template #default="{row}">
-                      <el-progress 
-                        :percentage="row.confidence" 
-                        :stroke-width="15" 
-                        :format="() => row.confidence + '%'"
-                      />
-                    </template>
-                  </el-table-column>
-                </el-table>
-              </div>
-
-              <div v-if="extractParams.format === 'graph'" class="graph-container">
-                <!-- 这里可以放置知识图谱可视化组件 -->
-                <div class="graph-placeholder">
-                  <el-icon :size="50"><pie-chart /></el-icon>
-                  <p>知识图谱可视化展示区域</p>
-                </div>
-              </div>
-
-              <div class="result-actions">
-                <el-button type="success" @click="copyToClipboard" size="small">
-                  <el-icon><document-copy /></el-icon>
-                  复制结果
-                </el-button>
-
-                <el-button type="info" @click="exportResult" size="small">
-                  <el-icon><download /></el-icon>
-                  导出结果
-                </el-button>
-
-                <el-button type="warning" @click="showRawData = !showRawData" size="small">
-                  <el-icon><view /></el-icon>
-                  {{ showRawData ? '隐藏原始数据' : '显示原始数据' }}
-                </el-button>
-              </div>
-
-              <!-- 原始JSON数据显示区域 -->
-              <div v-if="showRawData" class="raw-data">
-                <el-divider />
-                <h4>原始响应数据：</h4>
-                <pre>{{ rawResponse }}</pre>
-              </div>
+      <!-- 结果展示 -->
+      <div v-if="extractionResult.length > 0" class="result-section">
+        <el-divider class="result-divider" />
+        <h3 class="result-title">提取的知识点 ({{ extractionResult.length }}个)</h3>
+        
+        <el-card class="keyword-card" shadow="never">
+          <div class="keyword-grid">
+            <div 
+              v-for="(keyword, index) in extractionResult" 
+              :key="index"
+              class="keyword-item"
+            >
+              <el-tag 
+                type="success"
+                size="large"
+                class="keyword-tag"
+                effect="dark"
+                @click="copyKeyword(keyword)"
+              >
+                {{ keyword }}
+                <el-icon class="copy-icon"><document-copy /></el-icon>
+              </el-tag>
             </div>
+          </div>
+        </el-card>
 
-            <el-empty v-else description="暂无提取结果" :image-size="100">
-              <template #image>
-                <el-icon :size="50">
-                  <data-analysis />
-                </el-icon>
-              </template>
-            </el-empty>
-          </el-card>
-        </el-col>
-      </el-row>
+        <!-- 操作按钮 -->
+        <div class="result-actions">
+          <el-button 
+            @click="copyAllKeywords" 
+            type="primary"
+            class="result-btn"
+          >
+            <el-icon><document-copy /></el-icon>
+            复制全部
+          </el-button>
+          
+          <el-button 
+            @click="exportKeywords" 
+            type="success"
+            class="result-btn"
+          >
+            <el-icon><download /></el-icon>
+            导出为文档
+          </el-button>
+        </div>
+      </div>
+
+      <el-empty 
+        v-else-if="extractionDone" 
+        description="暂无提取结果" 
+        :image-size="100"
+      />
     </el-card>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { extractKeywords } from '@/api/ai_analysis/knowledge.js'
 
-// 数据定义
 const inputText = ref('')
 const isExtracting = ref(false)
-const extractionResult = ref(null)
-const rawResponse = ref(null)
-const showRawData = ref(false)
-const paramDialogVisible = ref(false)
+const extractionResult = ref([])
+const extractionDone = ref(false)
 
-// 提取参数
-const extractParams = ref({
-  types: ['entities', 'relations'],
-  language: 'auto',
-  format: 'json',
-  advanced: false,
-  domain: 'general'
-})
+// 插入示例讲课文本
+const insertSampleText = () => {
+  inputText.value = `同学们好，今天我们讲解机器学习的基础概念。机器学习分为监督学习、无监督学习和强化学习三大类型。
 
-// 计算属性
-const extractedItemsCount = computed(() => {
-  if (!extractionResult.value) return 0
-  return extractionResult.value.entities?.length || 0 + 
-         extractionResult.value.relations?.length || 0 +
-         extractionResult.value.events?.length || 0
-})
+监督学习需要标注数据，常见算法包括线性回归、逻辑回归、支持向量机和决策树。线性回归用于预测连续值，逻辑回归用于分类问题。
 
-const formattedResult = computed(() => {
-  return JSON.stringify(extractionResult.value, null, 2)
-})
+无监督学习让算法自主发现模式，包括聚类算法如K均值，降维技术如主成分分析PCA。
 
-const tableData = computed(() => {
-  if (!extractionResult.value) return []
-  
-  const data = []
-  if (extractionResult.value.entities) {
-    extractionResult.value.entities.forEach(entity => {
-      data.push({
-        type: '实体',
-        content: `${entity.text} (${entity.type})`,
-        confidence: entity.confidence * 100
-      })
-    })
-  }
-  
-  if (extractionResult.value.relations) {
-    extractionResult.value.relations.forEach(relation => {
-      data.push({
-        type: '关系',
-        content: `${relation.source} → ${relation.target} (${relation.type})`,
-        confidence: relation.confidence * 100
-      })
-    })
-  }
-  
-  return data
-})
+机器学习流程包含数据收集、特征工程、模型训练、评估和部署。特征工程是关键环节，直接影响模型效果。
 
-// 方法定义
-const startExtraction = () => {
-  if (!inputText.value.trim()) {
-    ElMessage.warning('请输入要提取的文本内容')
-    return
-  }
-  paramDialogVisible.value = true
+深度学习使用神经网络处理复杂问题，CNN用于图像识别，RNN处理序列数据，LSTM解决长序列依赖问题。
+
+机器学习已应用于医疗诊断、金融风控、推荐系统等领域，但需注意算法偏见和数据隐私问题。`
 }
 
-const confirmExtraction = async () => {
-  paramDialogVisible.value = false
+const startExtraction = async () => {
+  if (!inputText.value.trim()) {
+    ElMessage.warning('请输入讲课内容')
+    return
+  }
+
   isExtracting.value = true
+  extractionResult.value = []
+  extractionDone.value = false
   
   try {
-    // 调用API进行知识提取
-    const response = await fetchKnowledge(inputText.value, extractParams.value)
-    extractionResult.value = response.data
-    rawResponse.value = response
+    // 调用无topN参数的API
+    const response = await extractKeywords({
+      text: inputText.value
+    })
+    extractionResult.value = response.data || []
+    extractionDone.value = true
     
-    ElMessage.success('知识提取成功')
+    if (extractionResult.value.length > 0) {
+      ElMessage.success(`成功提取 ${extractionResult.value.length} 个知识点`)
+    } else {
+      ElMessage.warning('未提取到有效知识点')
+    }
   } catch (error) {
-    ElMessage.error('知识提取失败: ' + error.message)
+    ElMessage.error('提取失败: ' + error.message)
   } finally {
     isExtracting.value = false
   }
 }
 
-const fetchKnowledge = async (text, params) => {
-  // 这里替换为实际API调用
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      // 模拟API响应
-      const mockData = {
-        entities: [
-          { text: '人工智能', type: '技术', confidence: 0.95 },
-          { text: '深度学习', type: '技术', confidence: 0.92 },
-          { text: 'Google', type: '公司', confidence: 0.98 }
-        ],
-        relations: [
-          { source: '人工智能', target: '深度学习', type: '包含', confidence: 0.88 },
-          { source: 'Google', target: '人工智能', type: '研究', confidence: 0.85 }
-        ],
-        language: 'zh'
-      }
-      resolve({ data: mockData })
-    }, 1500)
-  })
+// 复制单个关键词
+const copyKeyword = (text) => {
+  navigator.clipboard.writeText(text)
+  ElMessage.success(`已复制: ${text}`)
 }
 
-const handleFileUpload = (file) => {
-  if (file.size > 50 * 1024 * 1024) {
-    ElMessage.error('文件大小不能超过50MB')
-    return
-  }
-  
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    inputText.value = e.target.result
-  }
-  reader.readAsText(file.raw)
+// 复制全部关键词
+const copyAllKeywords = () => {
+  const text = extractionResult.value.join('、')
+  navigator.clipboard.writeText(text)
+  ElMessage.success('已复制全部知识点')
 }
 
-const copyToClipboard = () => {
-  navigator.clipboard.writeText(formattedResult.value)
-  ElMessage.success('已复制到剪贴板')
-}
-
-const exportResult = () => {
-  let content = ''
-  if (extractParams.value.format === 'json') {
-    content = formattedResult.value
-  } else {
-    content = tableData.value.map(item => 
-      `${item.type}\t${item.content}\t${item.confidence}%`
-    ).join('\n')
-  }
-  
+// 导出为文本文件
+const exportKeywords = () => {
+  const content = `知识点提取结果：\n${extractionResult.value.join('\n')}`
   const blob = new Blob([content], { type: 'text/plain' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `知识提取结果_${new Date().toISOString().slice(0, 10)}.${extractParams.value.format === 'json' ? 'json' : 'txt'}`
+  a.download = `知识点提取_${new Date().toLocaleString()}.txt`
   a.click()
   URL.revokeObjectURL(url)
 }
-
-const clearAll = () => {
-  inputText.value = ''
-  extractionResult.value = null
-  rawResponse.value = null
-  showRawData.value = false
-}
-
-const handleParamDialogClose = (done) => {
-  done()
-}
 </script>
 
-<style scoped lang="scss">
+<style scoped>
+.knowledge-container {
+  height: calc(100vh - 40px);
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.full-screen-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 16px;
-  font-weight: bold;
-
-  span {
-    font-size: 18px;
-  }
+  padding: 16px 20px;
 }
 
-.input-area {
-  margin-bottom: 20px;
+.card-title {
+  font-size: 18px;
+  font-weight: 600;
 }
 
-.action-area {
+.input-section {
+  padding: 0 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.input-textarea {
+  flex: 1;
+}
+
+.input-textarea :deep(.el-textarea__inner) {
+  height: 100%;
+  resize: none;
+}
+
+.action-section {
+  padding: 0 20px;
   margin: 20px 0;
   display: flex;
   justify-content: center;
   gap: 20px;
 }
 
-.result-card {
-  min-height: 300px;
-
-  .card-header {
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--el-border-color-light);
-  }
+.action-btn {
+  width: 180px;
 }
 
-.result-content {
+.result-section {
+  padding: 0 20px;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 15px;
 }
 
-.result-text {
-  font-size: 14px;
-  line-height: 1.6;
+.result-title {
+  margin: 16px 0;
+  font-size: 16px;
+}
 
-  :deep(.el-textarea__inner) {
-    background-color: #f8f8f8;
-    border: 1px solid #e4e7ed;
-    color: #606266;
-    font-family: monospace;
-  }
+.keyword-card {
+  flex: 1;
+  overflow: auto;
+  border: none;
+}
+
+.keyword-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  padding: 8px;
+}
+
+.keyword-item {
+  display: flex;
+  justify-content: center;
+}
+
+.keyword-tag {
+  width: 100%;
+  justify-content: center;
+  padding: 10px 16px;
+  cursor: pointer;
+  position: relative;
+}
+
+.copy-icon {
+  margin-left: 6px;
+  opacity: 0.6;
+  transition: opacity 0.3s;
+}
+
+.keyword-tag:hover .copy-icon {
+  opacity: 1;
 }
 
 .result-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding-top: 10px;
-  border-top: 1px dashed var(--el-border-color-light);
-}
-
-.graph-container {
-  height: 400px;
-  border: 1px dashed #ddd;
-  border-radius: 4px;
+  margin-top: 20px;
   display: flex;
   justify-content: center;
-  align-items: center;
-  background-color: #f9f9f9;
-  
-  .graph-placeholder {
-    text-align: center;
-    color: #999;
-    
-    p {
-      margin-top: 10px;
-    }
-  }
+  gap: 20px;
 }
 
-.raw-data {
-  margin-top: 20px;
-  padding: 10px;
-  background-color: #f8f8f8;
-  border-radius: 4px;
-  max-height: 300px;
-  overflow: auto;
-
-  h4 {
-    margin-bottom: 10px;
-    color: #666;
-  }
-
-  pre {
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    font-family: monospace;
-    font-size: 12px;
-    line-height: 1.5;
-  }
+.result-btn {
+  width: 180px;
 }
 </style>
