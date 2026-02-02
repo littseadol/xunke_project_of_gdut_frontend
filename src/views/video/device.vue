@@ -316,7 +316,10 @@
         </el-dialog>
 
         <el-dialog v-model="videoDialogStatus" title="视频播放">
-            <RtspVideo :rtspVideo="form.rtspUrl"/>
+            <RtspVideo 
+            :rtspVideo="form.rtspUrl"
+            :deviceId="form.deviceId"
+            />
         </el-dialog>
 
         <!--  地图dialog      -->
@@ -377,6 +380,7 @@
         </el-dialog>
 
     </div>
+
 </template>
 
 <script setup>
@@ -400,6 +404,7 @@ import {onMounted, onUnmounted} from "vue";
 import AMapLoader from "@amap/amap-jsapi-loader";
 import RtspVideo from '@/components/rtspVideo/index.vue'
 
+const currentDeviceId = ref() // 你的设备ID
 const appStore = useAppStore()
 const {proxy} = getCurrentInstance()
 
