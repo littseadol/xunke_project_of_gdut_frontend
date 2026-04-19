@@ -168,7 +168,7 @@
 import { ref, onMounted, nextTick, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { WebRtcStreamer } from '/public/hikvision/webrtcstreamer.js'
-import { evaluateVideo, uploadFile } from '@/api/evaluation/index.js'
+import { evaluateVideo, uploadFile } from '@/api/video/evaluation.js'
 
 const props = defineProps({
   rtspVideo: {
